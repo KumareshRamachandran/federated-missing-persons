@@ -1,0 +1,33 @@
+# federated-missing-persons
+
+# Core FL
+flwr==1.7.0
+
+# Face Recognition
+insightface==0.7.3
+facenet-pytorch==2.5.3
+opencv-python==4.9.0.80
+
+# Deep Learning
+torch==2.2.0
+torchvision==0.17.0
+
+# Differential Privacy
+opacus==1.4.0
+
+# Backend API
+fastapi==0.110.0
+uvicorn==0.29.0
+
+# Data & Utils
+numpy==1.26.4
+scikit-learn==1.4.1
+Pillow==10.2.0
+tqdm==4.66.2
+matplotlib==3.8.3
+
+# Testing
+pytest==8.1.0
+
+# Notebooks
+jupyter==1.0.0
