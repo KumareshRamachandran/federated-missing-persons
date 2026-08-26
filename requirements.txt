@@ -1,33 +1,37 @@
-# federated-missing-persons
+# Privacy-Preserving Federated Learning for Missing Person Identification
+# Full dependency list
 
-# Core FL
-flwr==1.7.0
+# ── Deep Learning ──────────────────────────────────────
+torch>=1.13.0
+torchvision>=0.14.0
 
-# Face Recognition
-insightface==0.7.3
-facenet-pytorch==2.5.3
-opencv-python==4.9.0.80
+# ── Computer Vision ────────────────────────────────────
+ultralytics>=8.0.0          # YOLOv8–v12 for human detection
+insightface>=0.7.0          # ArcFace facial embeddings
+facenet-pytorch>=2.5.3      # FaceNet alternative embeddings
+opencv-python>=4.5.0        # Image processing
 
-# Deep Learning
-torch==2.2.0
-torchvision==0.17.0
+# ── Federated Learning ─────────────────────────────────
+flwr>=1.0.0                 # Flower FL framework
 
-# Differential Privacy
-opacus==1.4.0
+# ── Privacy & Cryptography ─────────────────────────────
+opacus>=1.2.0               # Differential Privacy (DP-SGD)
+tenseal>=0.3.0              # Homomorphic Encryption / P-SMPC
 
-# Backend API
-fastapi==0.110.0
-uvicorn==0.29.0
+# ── Dashboard / UI ─────────────────────────────────────
+streamlit>=1.10.0           # Investigator dashboard GUI
 
-# Data & Utils
-numpy==1.26.4
-scikit-learn==1.4.1
-Pillow==10.2.0
-tqdm==4.66.2
-matplotlib==3.8.3
+# ── Data & Utilities ───────────────────────────────────
+numpy>=1.24.0
+scikit-learn>=1.2.0
+Pillow>=9.0.0
+tqdm>=4.65.0
+matplotlib>=3.7.0
+pandas>=2.0.0
+PyYAML>=6.0
 
-# Testing
-pytest==8.1.0
+# ── Testing ────────────────────────────────────────────
+pytest>=8.0.0
 
-# Notebooks
-jupyter==1.0.0
+# ── Notebooks ──────────────────────────────────────────
+jupyter>=1.0.0
