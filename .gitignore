@@ -1,0 +1,125 @@
+# ─────────────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# ─────────────────────────────────────────────────────
+# Jupyter Notebooks
+# ─────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ─────────────────────────────────────────────────────
+# ML & Model Files  (large files — use Git LFS instead)
+# ─────────────────────────────────────────────────────
+models/
+*.pth
+*.pt
+*.onnx
+*.pkl
+*.npz
+*.npy
+*.h5
+*.hdf5
+
+# Exception: keep the models/ directory structure
+!models/.gitkeep
+!models/global/.gitkeep
+
+# ─────────────────────────────────────────────────────
+# Dataset & Data Files  (never commit raw datasets)
+# ─────────────────────────────────────────────────────
+data/raw/
+data/nodes/
+data/query_set/
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+data/**/*.bmp
+data/**/*.zip
+data/**/*.tar
+data/**/*.tgz
+data/**/*.csv
+
+# Keep directory placeholders
+!data/.gitkeep
+!data/raw/.gitkeep
+!data/nodes/.gitkeep
+!data/query_set/.gitkeep
+
+# ─────────────────────────────────────────────────────
+# Gallery Caches  (auto-generated, never commit)
+# ─────────────────────────────────────────────────────
+**/.cache/
+**/gallery_cache.pkl
+
+# ─────────────────────────────────────────────────────
+# Evaluation Results  (generated outputs)
+# ─────────────────────────────────────────────────────
+dashboard/evaluation/results/
+evaluation/results/
+*.json
+!shared/configs/*.json
+
+# ─────────────────────────────────────────────────────
+# Environment & Secrets
+# ─────────────────────────────────────────────────────
+.env
+.env.*
+*.env
+secrets.yaml
+secrets.json
+
+# ─────────────────────────────────────────────────────
+# IDE & Editor
+# ─────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─────────────────────────────────────────────────────
+# Logs
+# ─────────────────────────────────────────────────────
+*.log
+logs/
+*.out
+
+# ─────────────────────────────────────────────────────
+# Temporary Files
+# ─────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+
+# ─────────────────────────────────────────────────────
+# OS Files
+# ─────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
