@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyTorch and Model weights (large files)
+*.pt
+*.pth
+*.onnx
+*.weights
+
+# Virtual environments
+venv/
+env/
+.env/
+conda/
+
+# Datasets & downloaded raw data
+data/raw/
+data/nodes/
+data/query_set/
+
+# Local test media / matches output
+**/photos/matches/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

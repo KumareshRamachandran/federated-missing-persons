@@ -1,37 +1,40 @@
 # Privacy-Preserving Federated Learning for Missing Person Identification
-# Full dependency list
+# Full dependency list — verified against Python 3.13 environment
 
-# ── Deep Learning ──────────────────────────────────────
-torch>=1.13.0
-torchvision>=0.14.0
+# ── Deep Learning ──────────────────────────────────────────────────────
+torch>=2.0.0
+torchvision>=0.15.0
 
-# ── Computer Vision ────────────────────────────────────
+# ── Computer Vision ────────────────────────────────────────────────────
 ultralytics>=8.0.0          # YOLOv8–v12 for human detection
-insightface>=0.7.0          # ArcFace facial embeddings
-facenet-pytorch>=2.5.3      # FaceNet alternative embeddings
-opencv-python>=4.5.0        # Image processing
+facenet-pytorch>=2.5.3      # MTCNN face detection + InceptionResnetV1 (ArcFace backbone)
+insightface>=0.7.0          # ArcFace (centralized baseline comparison only)
+opencv-python>=4.5.0        # Image/video processing
+Pillow>=9.0.0               # Image loading (PIL)
 
-# ── Federated Learning ─────────────────────────────────
+# ── Federated Learning ─────────────────────────────────────────────────
 flwr>=1.0.0                 # Flower FL framework
 
-# ── Privacy & Cryptography ─────────────────────────────
+# ── Privacy & Cryptography ─────────────────────────────────────────────
 opacus>=1.2.0               # Differential Privacy (DP-SGD)
 tenseal>=0.3.0              # Homomorphic Encryption / P-SMPC
 
-# ── Dashboard / UI ─────────────────────────────────────
+# ── Dashboard / UI ─────────────────────────────────────────────────────
 streamlit>=1.10.0           # Investigator dashboard GUI
 
-# ── Data & Utilities ───────────────────────────────────
-numpy>=1.24.0
+# ── Data & Utilities ───────────────────────────────────────────────────
+# NOTE: facenet-pytorch declares numpy<2.0 but works fine with numpy 2.x.
+#       Install with: pip install facenet-pytorch --no-deps
+numpy>=2.0.0
 scikit-learn>=1.2.0
-Pillow>=9.0.0
 tqdm>=4.65.0
 matplotlib>=3.7.0
 pandas>=2.0.0
 PyYAML>=6.0
+requests>=2.28.0
 
-# ── Testing ────────────────────────────────────────────
+# ── Testing ────────────────────────────────────────────────────────────
 pytest>=8.0.0
 
-# ── Notebooks ──────────────────────────────────────────
+# ── Notebooks ──────────────────────────────────────────────────────────
 jupyter>=1.0.0
