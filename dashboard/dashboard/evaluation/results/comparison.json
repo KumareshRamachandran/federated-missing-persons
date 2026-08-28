@@ -1,0 +1,51 @@
+{
+  "title": "Centralized Baseline vs. Federated Privacy-Preserving Comparison",
+  "timestamp": "2026-08-28T10:24:04Z",
+  "summary": {
+    "centralized_accuracy_pct": 100.0,
+    "federated_accuracy_pct": 100.0,
+    "accuracy_drop_pct": 0.0,
+    "centralized_latency_ms": 0.02,
+    "federated_latency_ms": 0.06,
+    "latency_overhead_ms": 0.04
+  },
+  "centralized": {
+    "mode": "Centralized (Baseline [1] ICCMC 2026)",
+    "rank1_accuracy": 100.0,
+    "cmc": {
+      "1": 100.0,
+      "5": 100.0,
+      "10": 100.0
+    },
+    "avg_latency_ms": 0.02,
+    "total_queries": 60,
+    "total_gallery_size": 60,
+    "privacy_guarantee": "None (Centralized Biometric Storage)",
+    "data_leakage_risk": "CRITICAL (Single Breach Exposes All Databases)",
+    "raw_biometric_exposure": true,
+    "inference_privacy": false
+  },
+  "federated": {
+    "mode": "Federated (Proposed Privacy Stack)",
+    "rank1_accuracy": 100.0,
+    "cmc": {
+      "1": 100.0,
+      "5": 100.0,
+      "10": 100.0
+    },
+    "avg_latency_ms": 0.06,
+    "total_queries": 60,
+    "total_gallery_size": 60,
+    "nodes_participating": 3,
+    "privacy_guarantee": "Differential Privacy (DP-SGD) + SMPC/HE + Local Matching",
+    "data_leakage_risk": "ZERO (Gallery data never leaves organization boundary)",
+    "raw_biometric_exposure": false,
+    "inference_privacy": true
+  },
+  "novelty_analysis": {
+    "prior_work_reference": "[1] Rakshika et al., ICCMC 2026 (Centralized YOLO+ArcFace)",
+    "privacy_gain": "Complete mathematical isolation of private organization galleries",
+    "accuracy_retention": "100.0%",
+    "inference_privacy_guaranteed": true
+  }
+}

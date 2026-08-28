@@ -1,0 +1,25 @@
+# coordinator config
+server_address: "0.0.0.0:8080"
+num_rounds: 10
+min_fit_clients: 2         # Minimum nodes needed to start a training round
+min_eval_clients: 2
+fraction_fit: 1.0          # Use all available clients per round
+
+# Differential Privacy
+dp_enabled: true
+noise_multiplier: 1.1      # Higher = more privacy, less accuracy
+max_grad_norm: 1.0
+
+# Model
+model_backbone: "iresnet50"
+embedding_dim: 512
+weights_path: "models/arcface_iresnet50.pth"
+
+# Federated Simulation
+nodes:
+  - id: "node_police"
+    data_dir: "data/nodes/node_police"
+  - id: "node_hospital"
+    data_dir: "data/nodes/node_hospital"
+  - id: "node_ngo"
+    data_dir: "data/nodes/node_ngo"
