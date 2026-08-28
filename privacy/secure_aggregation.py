@@ -17,18 +17,36 @@ def generate_mask_pair(shape: tuple, seed: int) -> tuple:
     Generate a pair of cancelling masks for two clients.
     mask_a + mask_b = 0 (they cancel in aggregation).
 
+    Args:
+        shape: Dimensions of mask array.
+        seed: Random seed for deterministic mask generation.
+
     Returns:
-        (mask_a, mask_b): Two np.ndarray masks of given shape.
+        (mask_a, mask_b): Two np.ndarray masks of given shape such that mask_a + mask_b = 0.
     """
-    # TODO: np.random.seed(seed); mask = np.random.randn(*shape)
-    # TODO: return mask, -mask
-    pass
+    rng = np.random.RandomState(seed)
+    mask_a = rng.randn(*shape).astype(np.float32)
+    mask_b = -mask_a
+    return mask_a, mask_b
 
 
 def apply_mask(weights: list, masks: list) -> list:
-    """Add masks to weight arrays before sending to coordinator."""
-    # TODO: return [w + m for w, m in zip(weights, masks)]
-    pass
+    """
+    Add masks to weight arrays before sending to coordinator.
+
+    Args:
+        weights: List of weight np.ndarrays.
+        masks: List of mask np.ndarrays corresponding to weights.
+
+    Returns:
+        List of masked weight arrays.
+    """
+    masked_weights = []
+    for w, m in zip(weights, masks):
+        w_arr = np.asarray(w, dtype=np.float32)
+        m_arr = np.asarray(m, dtype=np.float32)
+        masked_weights.append(w_arr + m_arr)
+    return masked_weights
 
 
 def simulate_secure_aggregation(client_updates: list) -> list:
@@ -42,5 +60,16 @@ def simulate_secure_aggregation(client_updates: list) -> list:
     Returns:
         Aggregated weights (sum of all updates).
     """
-    # TODO: Element-wise sum across all client_updates
-    pass
+    if not client_updates:
+        return []
+
+    num_layers = len(client_updates[0])
+    aggregated = []
+    for layer_idx in range(num_layers):
+        layer_sum = np.zeros_like(np.asarray(client_updates[0][layer_idx], dtype=np.float32))
+        for client_weights in client_updates:
+            layer_sum += np.asarray(client_weights[layer_idx], dtype=np.float32)
+        aggregated.append(layer_sum)
+
+    return aggregated
+
