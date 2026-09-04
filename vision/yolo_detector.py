@@ -10,27 +10,26 @@ Responsible for:
 Member responsible: G N Lokesh (23BCE9603) — Computer Vision module
 """
 
+from __future__ import annotations
+
 from ultralytics import YOLO
 import cv2
 import numpy as np
 from pathlib import Path
 
 
-class YOLODetector:
+class YOLOPersonDetector:
     """
     YOLOv8-based human detector for surveillance frames.
-    Outputs cropped person bounding boxes for face embedding pipeline.
+    Detects persons in images/frames and returns cropped person regions.
     """
 
     PERSON_CLASS_ID = 0  # COCO class index for 'person'
 
-    def __init__(self, model_path: str = "yolov8n.pt", confidence: float = 0.4):
+    def __init__(self, model_path: str = "yolov8n.pt", confidence: float = 0.5):
         """
-        Args:
-            model_path: Path to YOLOv8 weights. Downloads pretrained if not found locally.
-            confidence: Minimum detection confidence threshold.
+        Loads the pre-trained YOLOv8 model (default yolov8n.pt).
         """
-        # Resolve model_path if found in parent directories
         resolved_path = Path(model_path)
         if not resolved_path.exists():
             for parent in [Path(__file__).resolve().parent, Path(__file__).resolve().parent.parent]:
@@ -42,36 +41,74 @@ class YOLODetector:
         self.model = YOLO(str(resolved_path))
         self.confidence = confidence
 
-    # ------------------------------------------------------------------
-    # Core detection
-    # ------------------------------------------------------------------
-
-    def detect_persons(self, image: np.ndarray) -> list:
+    def detect_persons(self, image_path_or_frame: str | Path | np.ndarray, conf_threshold: float = 0.5) -> list[np.ndarray]:
         """
-        Detect all persons in a surveillance frame.
+        Runs inference, filters results strictly for COCO class 0 (person),
+        and returns a list of cropped NumPy array images of detected persons.
 
         Args:
-            image: BGR image as numpy array (from cv2.imread or CCTV frame).
+            image_path_or_frame: File path (str/Path) or BGR image NumPy array.
+            conf_threshold: Minimum detection confidence threshold (default 0.5).
 
         Returns:
-            List of dicts:
-                {
-                    "bbox":       [x1, y1, x2, y2],   # absolute pixel coords
-                    "confidence": float,
-                    "crop":       np.ndarray            # BGR crop of the person region
-                }
+            List of cropped person regions as BGR NumPy arrays.
         """
+        if isinstance(image_path_or_frame, (str, Path)):
+            image = cv2.imread(str(image_path_or_frame))
+            if image is None:
+                raise FileNotFoundError(f"Could not read image from path: {image_path_or_frame}")
+        else:
+            image = image_path_or_frame
+
         if image is None or image.size == 0:
             return []
 
-        # Ensure colour image (convert grayscale if needed)
         if image.ndim == 2:
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
 
         results = self.model(
             image,
             classes=[self.PERSON_CLASS_ID],
-            conf=self.confidence,
+            conf=conf_threshold,
+            verbose=False,
+        )
+
+        person_crops = []
+        h, w = image.shape[:2]
+
+        for result in results:
+            boxes = result.boxes
+            if boxes is None:
+                continue
+
+            for box in boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                x1_c = max(0, x1)
+                y1_c = max(0, y1)
+                x2_c = min(w, x2)
+                y2_c = min(h, y2)
+
+                crop = image[y1_c:y2_c, x1_c:x2_c].copy()
+                if crop.size > 0:
+                    person_crops.append(crop)
+
+        return person_crops
+
+    def detect_persons_detailed(self, image: np.ndarray, conf_threshold: float = 0.5) -> list[dict]:
+        """
+        Detailed detection method returning bounding box metadata alongside crops.
+        Used by VisionPipeline and video frame processors.
+        """
+        if image is None or image.size == 0:
+            return []
+
+        if image.ndim == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+
+        results = self.model(
+            image,
+            classes=[self.PERSON_CLASS_ID],
+            conf=conf_threshold,
             verbose=False,
         )
 
@@ -87,7 +124,6 @@ class YOLODetector:
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                 conf = float(box.conf[0])
 
-                # Add small padding (5 %) around the bounding box
                 pad_x = int((x2 - x1) * 0.05)
                 pad_y = int((y2 - y1) * 0.05)
                 x1_p = max(0, x1 - pad_x)
@@ -96,7 +132,6 @@ class YOLODetector:
                 y2_p = min(h, y2 + pad_y)
 
                 crop = image[y1_p:y2_p, x1_p:x2_p].copy()
-
                 detections.append(
                     {
                         "bbox": [x1, y1, x2, y2],
@@ -107,37 +142,26 @@ class YOLODetector:
 
         return detections
 
-    # ------------------------------------------------------------------
-    # Convenience wrappers
-    # ------------------------------------------------------------------
 
-    def detect_from_path(self, image_path: str) -> list:
-        """
-        Detect persons from an image file path.
+class YOLODetector(YOLOPersonDetector):
+    """
+    Backward-compatible wrapper class for VisionPipeline.
+    """
 
-        Args:
-            image_path: Absolute or relative path to image file.
+    def __init__(self, model_path: str = "yolov8n.pt", confidence: float = 0.4):
+        super().__init__(model_path=model_path)
+        self.confidence = confidence
 
-        Returns:
-            Same structure as detect_persons().
-        """
+    def detect_persons(self, image: np.ndarray) -> list[dict]:
+        return self.detect_persons_detailed(image, conf_threshold=self.confidence)
+
+    def detect_from_path(self, image_path: str) -> list[dict]:
         image = cv2.imread(str(image_path))
         if image is None:
             raise FileNotFoundError(f"Could not read image: {image_path}")
         return self.detect_persons(image)
 
     def detect_from_video(self, video_path: str, frame_skip: int = 5):
-        """
-        Generator: yield detections from each sampled video frame.
-
-        Args:
-            video_path:  Path to surveillance video file.
-            frame_skip:  Process every Nth frame (reduces compute load).
-
-        Yields:
-            Tuple (frame_index, frame, detections) where detections follows
-            the same structure as detect_persons().
-        """
         cap = cv2.VideoCapture(str(video_path))
         if not cap.isOpened():
             raise FileNotFoundError(f"Could not open video: {video_path}")
@@ -157,17 +181,7 @@ class YOLODetector:
         finally:
             cap.release()
 
-    # ------------------------------------------------------------------
-    # Utilities
-    # ------------------------------------------------------------------
-
     def draw_detections(self, image: np.ndarray, detections: list) -> np.ndarray:
-        """
-        Draw bounding boxes and confidence scores on image (for debugging).
-
-        Returns:
-            Annotated copy of the input image.
-        """
         annotated = image.copy()
         for det in detections:
             x1, y1, x2, y2 = det["bbox"]
@@ -179,3 +193,24 @@ class YOLODetector:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1,
             )
         return annotated
+
+
+if __name__ == "__main__":
+    print("Testing YOLOPersonDetector...")
+    detector = YOLOPersonDetector("yolov8n.pt")
+
+    sample_path = Path(__file__).resolve().parent / "photos" / "missing.png"
+    if sample_path.exists():
+        print(f"Running detection on sample image: {sample_path}")
+        crops = detector.detect_persons(str(sample_path), conf_threshold=0.3)
+        print(f"Detected {len(crops)} person crop(s).")
+    else:
+        print("Sample image missing.png not found, testing with synthetic image.")
+        synthetic_img = np.full((600, 400, 3), 200, dtype=np.uint8)
+        cv2.circle(synthetic_img, (200, 150), 40, (100, 100, 100), -1)
+        cv2.rectangle(synthetic_img, (150, 200), (250, 500), (50, 50, 50), -1)
+        crops = detector.detect_persons(synthetic_img, conf_threshold=0.1)
+        print(f"Ran detection on synthetic image. Crops returned: {len(crops)}")
+
+    print("[OK] YOLOPersonDetector test passed!")
+

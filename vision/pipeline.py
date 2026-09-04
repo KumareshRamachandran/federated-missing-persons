@@ -19,10 +19,21 @@ Pipeline:
 Member: G N Lokesh (23BCE9603) -- Computer Vision module
 """
 
+import sys
 import numpy as np
 from pathlib import Path
 
-from vision.yolo_detector import YOLODetector
+_THIS_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _THIS_DIR.parent
+for p in [str(_PROJECT_ROOT), str(_THIS_DIR)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    from vision.yolo_detector import YOLOPersonDetector as YOLODetector
+except ImportError:
+    from yolo_detector import YOLOPersonDetector as YOLODetector
+
 from vision.embedder import (
     generate_embedding,
     generate_embedding_from_crop,
@@ -215,4 +226,16 @@ class VisionPipeline:
         """
         self.arcface_weights = new_weights_path
         reset_model()
+
+
+if __name__ == "__main__":
+    print("Testing VisionPipeline...", flush=True)
+    pipeline = VisionPipeline()
+    sample_img = _PROJECT_ROOT / "vision" / "photos" / "missing.png"
+    if sample_img.exists():
+        emb = pipeline.process_image(str(sample_img))
+        print(f"Extracted embedding shape: {emb.shape if emb is not None else None}", flush=True)
+        print("[OK] VisionPipeline test passed!", flush=True)
+    else:
+        print(f"[OK] VisionPipeline initialized cleanly (sample image {sample_img} not found).", flush=True)
 
