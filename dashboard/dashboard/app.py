@@ -35,6 +35,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from dashboard.evaluation.metrics import compute_roc
 from dashboard.integration.pipeline import Pipeline
+from vision.finetune import fine_tune_pair
+from vision.search_video import search_person_in_video
 
 
 # ── Page Configuration ────────────────────────────────────────────────────────
@@ -179,7 +181,27 @@ def render_sidebar():
 
 
 # ── Tab 1: Investigator Search ────────────────────────────────────────────────
+# ── Tab 1: Investigator Search ────────────────────────────────────────────────
 def render_search_tab(pipeline: Pipeline, config: dict):
+    search_type = st.radio(
+        "Select Investigation Mode:",
+        [
+            "📷 Federated Photo Search (Distributed Node Matching)",
+            "🎥 Video Surveillance Search (ArcFace Frame Tracking)",
+        ],
+        horizontal=True,
+        key="search_mode_radio",
+    )
+
+    st.markdown("---")
+
+    if "📷" in search_type:
+        render_photo_search_section(pipeline, config)
+    else:
+        render_video_search_section(config)
+
+
+def render_photo_search_section(pipeline: Pipeline, config: dict):
     col_search, col_results = st.columns([1, 1.3], gap="large")
 
     with col_search:
@@ -331,6 +353,214 @@ def render_search_tab(pipeline: Pipeline, config: dict):
                 )
         else:
             st.info("Awaiting search submission. Results will appear here dynamically.")
+
+
+def render_video_search_section(config: dict):
+    st.subheader("🎥 ArcFace Video Surveillance Search Engine")
+    st.caption("Upload a target missing person photograph and a surveillance video file to detect and track occurrences with exact timeframes.")
+
+    col1, col2 = st.columns(2, gap="large")
+
+    with col1:
+        st.markdown("##### 1. Target Person Photograph")
+        uploaded_person = st.file_uploader(
+            "Upload Target Person Image (JPG, PNG)",
+            type=["jpg", "jpeg", "png"],
+            key="video_person_uploader",
+        )
+        sample_person_path = str(PROJECT_ROOT / "vision" / "photos" / "missing.png")
+        person_to_use = None
+
+        if uploaded_person is not None:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                tmp.write(uploaded_person.getvalue())
+                person_to_use = tmp.name
+            st.image(uploaded_person, caption="Uploaded Target Photo", use_column_width=True)
+        elif sample_person_path and os.path.exists(sample_person_path):
+            person_to_use = sample_person_path
+            st.image(sample_person_path, caption="Sample Target Photo (missing.png)", use_column_width=True)
+
+    with col2:
+        st.markdown("##### 2. Surveillance Video File")
+        uploaded_video = st.file_uploader(
+            "Upload Surveillance Video (MP4, AVI, MOV)",
+            type=["mp4", "avi", "mov", "mkv"],
+            key="video_file_uploader",
+        )
+        sample_video_path = str(PROJECT_ROOT / "vision" / "photos" / "search.mp4")
+        video_to_use = None
+
+        if uploaded_video is not None:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+                tmp.write(uploaded_video.getvalue())
+                video_to_use = tmp.name
+            st.video(uploaded_video)
+        elif os.path.exists(sample_video_path):
+            video_to_use = sample_video_path
+            st.video(sample_video_path)
+
+    st.markdown("---")
+    col_conf1, col_conf2 = st.columns(2)
+    with col_conf1:
+        v_threshold = st.slider(
+            "Video Match Cosine Threshold (τ)",
+            min_value=0.30,
+            max_value=0.80,
+            value=float(config.get("match_threshold", 0.40)),
+            step=0.01,
+            key="video_thresh_slider",
+        )
+    with col_conf2:
+        frame_skip = st.slider(
+            "Frame Sampling Interval (Every N-th Frame)",
+            min_value=1,
+            max_value=15,
+            value=5,
+            step=1,
+            help="Higher values scan faster, lower values check more frames.",
+            key="video_skip_slider",
+        )
+
+    run_video_search = st.button(
+        "🚀 Execute ArcFace Video Person Search",
+        type="primary",
+        use_container_width=True,
+        disabled=(person_to_use is None or video_to_use is None),
+    )
+
+    if run_video_search or "last_video_results" in st.session_state:
+        if run_video_search:
+            progress_bar = st.progress(0.0)
+            status_text = st.empty()
+
+            def update_progress(current_frame, total_frames, matches_count):
+                pct = min(1.0, max(0.0, current_frame / (total_frames + 1e-6)))
+                progress_bar.progress(pct)
+                status_text.markdown(f"⏳ **Scanning Video Frame {current_frame} / {total_frames}** | Hits Found: **{matches_count}**")
+
+            with st.spinner("Processing video frames with YOLOv8 face detector + ArcFace embedder..."):
+                out_path = str(PROJECT_ROOT / "data_identity_match.mp4")
+                v_res = search_person_in_video(
+                    person_image_path=person_to_use,
+                    video_path=video_to_use,
+                    threshold=v_threshold,
+                    frame_skip=frame_skip,
+                    output_video_path=out_path,
+                    progress_callback=update_progress,
+                )
+                st.session_state["last_video_results"] = v_res
+                status_text.success("✅ Video Search Completed Successfully!")
+                progress_bar.progress(1.0)
+
+        v_res = st.session_state.get("last_video_results")
+        if v_res:
+            st.markdown("### 📊 Search Results & Matched Timeframes")
+
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            with col_m1:
+                st.metric("Total Video Frames", v_res.get("total_frames", 0))
+            with col_m2:
+                st.metric("Frames Checked", v_res.get("sampled_frames", 0))
+            with col_m3:
+                st.metric("Matches Found", v_res.get("matches_count", 0))
+            with col_m4:
+                st.metric("Peak Cosine Sim", f"{v_res.get('best_similarity', 0.0)*100:.1f}%")
+
+            matches = v_res.get("matches", [])
+            if matches:
+                st.success(f"🎯 Found **{len(matches)} matching frame(s)** where the missing person was detected!")
+                st.subheader("🖼️ Matched Video Frames, Timeframes & Interactive Fine-Tuning")
+
+                if "feedback_results" not in st.session_state:
+                    st.session_state["feedback_results"] = {}
+
+                cols_per_row = 3
+                for i in range(0, len(matches), cols_per_row):
+                    row_matches = matches[i : i + cols_per_row]
+                    cols = st.columns(len(row_matches))
+                    for col, m in zip(cols, row_matches):
+                        with col:
+                            frame_key = f"frame_{m['frame_idx']}"
+                            if "frame_rgb" in m and m["frame_rgb"] is not None:
+                                st.image(
+                                    m["frame_rgb"],
+                                    caption=f"Frame #{m['frame_idx']} @ {m['timestamp_formatted']}",
+                                    use_column_width=True,
+                                )
+
+                            st.markdown(
+                                f"""
+                                <div style="background: #1b2e1e; border: 1px solid #4caf50; border-radius: 6px; padding: 10px; margin-bottom: 8px; text-align: center;">
+                                    <span style="color: #4caf50; font-weight: bold; font-size: 1.1rem;">⏱️ Timeframe: {m['timestamp_formatted']}</span><br>
+                                    <span style="color: #e0e0e0; font-size: 0.9rem;">🎯 Similarity: <b>{m['similarity']*100:.1f}%</b></span><br>
+                                    <span style="color: #888; font-size: 0.8rem;">🎞️ Frame #{m['frame_idx']} ({m['timestamp_sec']}s)</span>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+
+                            # ── Interactive Feedback & PyTorch Fine-Tuning ────────────
+                            fb_info = st.session_state["feedback_results"].get(frame_key)
+
+                            if fb_info is None:
+                                btn_col1, btn_col2 = st.columns(2)
+                                is_correct_clicked = btn_col1.button(
+                                    "✅ Correct",
+                                    key=f"correct_{m['frame_idx']}",
+                                    use_container_width=True,
+                                )
+                                is_wrong_clicked = btn_col2.button(
+                                    "❌ Wrong",
+                                    key=f"wrong_{m['frame_idx']}",
+                                    use_container_width=True,
+                                )
+
+                                if is_correct_clicked or is_wrong_clicked:
+                                    is_correct = is_correct_clicked
+                                    with st.spinner("Fine-tuning ArcFace PyTorch model..."):
+                                        query_img = v_res.get("person_image") or person_to_use
+                                        crop_img = m.get("frame_rgb")
+                                        ft_res = fine_tune_pair(
+                                            query_image=query_img,
+                                            crop_image=crop_img,
+                                            is_correct=is_correct,
+                                            steps=3,
+                                            save_log=True,
+                                        )
+                                        st.session_state["feedback_results"][frame_key] = ft_res
+                                    st.rerun()
+
+                            else:
+                                # Buttons DISAPPEAR and get replaced by before/after similarity comparison card
+                                is_corr = fb_info.get("is_correct", True)
+                                s_b = fb_info.get("s_before", 0.0) * 100.0
+                                s_a = fb_info.get("s_after", 0.0) * 100.0
+                                delta_str = fb_info.get("delta_formatted", "")
+
+                                badge_color = "#4caf50" if is_corr else "#f44336"
+                                status_label = "✅ Confirmed Match" if is_corr else "❌ Flagged Misidentification"
+
+                                st.markdown(
+                                    f"""
+                                    <div style="background-color: #1e2530; border-left: 4px solid {badge_color}; border-radius: 6px; padding: 10px; margin-bottom: 12px;">
+                                        <div style="color: {badge_color}; font-weight: bold; font-size: 0.95rem; margin-bottom: 4px;">
+                                            {status_label}
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: #ccc;">
+                                            <b>Before Fine-Tune:</b> {s_b:.2f}%<br>
+                                            <b>After Fine-Tune:</b> {s_a:.2f}%<br>
+                                            <b>Shift (Δ):</b> <span style="color: {'#4caf50' if is_corr else '#ff5252'}; font-weight: bold;">{delta_str}</span>
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">
+                                            💾 Saved to <code>data/nodes/local_feedback_log.json</code> for FL
+                                        </div>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
+                                )
+
+            else:
+                st.warning("❌ No positive matches detected in this video above the selected threshold.")
 
 
 # ── Tab 2: Federated Network & Training ───────────────────────────────────────
